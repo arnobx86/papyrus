@@ -30,17 +30,26 @@ class VersionService {
       
       final response = await http.get(Uri.parse('${AppConfig.websiteUrl}/api/update-check?arch=$arch'));
       
+      debugPrint('Update check response status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('Latest version data: $data');
+        
         final latestVersion = data['latest_version'];
         final downloadUrl = data['download_url'];
         final updateType = data['update_type']; // 'soft' or 'force'
         final releaseNotes = data['release_notes'];
 
+        debugPrint('Checking current $currentVersion against latest $latestVersion');
+
         if (_isVersionNewer(currentVersion, latestVersion)) {
+          debugPrint('Update available! Showing dialog.');
           if (context.mounted) {
             _showUpdateDialog(context, latestVersion, downloadUrl, updateType == 'force', releaseNotes);
           }
+        } else {
+          debugPrint('No update needed.');
         }
       }
     } catch (e) {
@@ -49,8 +58,12 @@ class VersionService {
   }
 
   static bool _isVersionNewer(String current, String latest) {
-    List<int> currentParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    List<int> latestParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    // Sanitize versions (remove +buildNumber part)
+    String cleanCurrent = current.split('+')[0];
+    String cleanLatest = latest.split('+')[0];
+
+    List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
     for (int i = 0; i < latestParts.length; i++) {
       int currentPart = i < currentParts.length ? currentParts[i] : 0;
