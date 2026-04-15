@@ -70,13 +70,6 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 _buildItem(
                   context,
-                  icon: LucideIcons.bug,
-                  label: 'Test Sentry Crash',
-                  color: Colors.deepPurple,
-                  onTap: () => throw Exception('Papyrus Sentry Test Crash!'),
-                ),
-                _buildItem(
-                  context,
                   icon: LucideIcons.logOut,
                   label: 'Log Out',
                   color: Colors.grey,
