@@ -22,10 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _todayPurchases = 0;
   double _todayExpense = 0;
   double _currentStock = 0;
-  RealtimeChannel? _salesChannel;
-  RealtimeChannel? _purchasesChannel;
-  RealtimeChannel? _transactionsChannel;
-  RealtimeChannel? _productsChannel;
+  RealtimeChannel? _mainChannel;
 
   @override
   void initState() {
@@ -51,10 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     context.read<DataRefreshNotifier>().removeListener(_onDataRefresh);
-    _salesChannel?.unsubscribe();
-    _purchasesChannel?.unsubscribe();
-    _transactionsChannel?.unsubscribe();
-    _productsChannel?.unsubscribe();
+    _mainChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -64,97 +58,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final supabase = Supabase.instance.client;
     
-    // Subscribe to sales changes
-    _salesChannel = supabase
-        .channel('dashboard_sales')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'sales',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'shop_id',
-            value: shopId,
-          ),
-          callback: (payload) {
-            debugPrint('Dashboard sales change detected: ${payload.eventType}');
-            if (mounted) {
-              _fetchSummary();
-            }
-          },
-        )
-        .subscribe((status, error) {
-          debugPrint('Dashboard sales subscription status: $status');
-        });
+    // Use ONE channel for ALL shop-related tables
+    _mainChannel = supabase.channel('shop_updates_$shopId');
 
-    // Subscribe to purchases changes
-    _purchasesChannel = supabase
-        .channel('dashboard_purchases')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'purchases',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'shop_id',
-            value: shopId,
-          ),
-          callback: (payload) {
-            debugPrint('Dashboard purchases change detected: ${payload.eventType}');
-            if (mounted) {
-              _fetchSummary();
-            }
-          },
-        )
-        .subscribe((status, error) {
-          debugPrint('Dashboard purchases subscription status: $status');
-        });
+    // Sales
+    _mainChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'sales',
+      filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'shop_id', value: shopId),
+      callback: (payload) => _fetchSummary(),
+    );
 
-    // Subscribe to transactions changes
-    _transactionsChannel = supabase
-        .channel('dashboard_transactions')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'transactions',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'shop_id',
-            value: shopId,
-          ),
-          callback: (payload) {
-            debugPrint('Dashboard transactions change detected: ${payload.eventType}');
-            if (mounted) {
-              _fetchSummary();
-            }
-          },
-        )
-        .subscribe((status, error) {
-          debugPrint('Dashboard transactions subscription status: $status');
-        });
+    // Purchases
+    _mainChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'purchases',
+      filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'shop_id', value: shopId),
+      callback: (payload) => _fetchSummary(),
+    );
 
-    // Subscribe to products changes
-    _productsChannel = supabase
-        .channel('dashboard_products')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'products',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'shop_id',
-            value: shopId,
-          ),
-          callback: (payload) {
-            debugPrint('Dashboard products change detected: ${payload.eventType}');
-            if (mounted) {
-              _fetchSummary();
-            }
-          },
-        )
-        .subscribe((status, error) {
-          debugPrint('Dashboard products subscription status: $status');
-        });
+    // Transactions
+    _mainChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'transactions',
+      filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'shop_id', value: shopId),
+      callback: (payload) => _fetchSummary(),
+    );
+
+    // Products
+    _mainChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'products',
+      filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'shop_id', value: shopId),
+      callback: (payload) => _fetchSummary(),
+    );
+
+    _mainChannel!.subscribe();
   }
 
   Future<void> _fetchSummary() async {
