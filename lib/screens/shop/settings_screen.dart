@@ -60,6 +60,14 @@ class SettingsScreen extends StatelessWidget {
                     onTap: () => context.push('/approvals'),
                   ),
                 const Divider(),
+                _buildItem(
+                  context,
+                  icon: LucideIcons.refreshCcw,
+                  label: 'Check for Update',
+                  color: const Color(0xFF154834),
+                  onTap: () => VersionService.checkForUpdates(context, showNoUpdateMsg: true),
+                ),
+                const Divider(),
                 if (auth.currentRole == 'Owner')
                   _buildItem(
                     context,

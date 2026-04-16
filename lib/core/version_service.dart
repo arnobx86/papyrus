@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class VersionService {
-  static Future<void> checkForUpdates(BuildContext context) async {
+  static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateMsg = false}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
+      final currentVersion = packageInfo.version.trim();
       
       // Get Architecture
       String arch = 'universal';
@@ -28,7 +28,9 @@ class VersionService {
         }
       }
       
-      final response = await http.get(Uri.parse('${AppConfig.websiteUrl}/api/update-check?arch=$arch'));
+      final url = '${AppConfig.websiteUrl}/api/update-check?arch=$arch';
+      debugPrint('Update check URL: $url');
+      final response = await http.get(Uri.parse(url));
       
       debugPrint('Update check response status: ${response.statusCode}');
       
@@ -36,39 +38,54 @@ class VersionService {
         final data = json.decode(response.body);
         debugPrint('Latest version data: $data');
         
-        final latestVersion = data['latest_version'];
-        final downloadUrl = data['download_url'];
+        final latestVersion = (data['latest_version'] as String? ?? '').trim();
+        final downloadUrl = data['download_url'] as String?;
         final updateType = data['update_type']; // 'soft' or 'force'
         final releaseNotes = data['release_notes'];
 
-        debugPrint('Checking current $currentVersion against latest $latestVersion');
+        debugPrint('Comparing: Current["$currentVersion"] vs Latest["$latestVersion"]');
 
-        if (_isVersionNewer(currentVersion, latestVersion)) {
+        if (latestVersion.isNotEmpty && _isVersionNewer(currentVersion, latestVersion)) {
           debugPrint('Update available! Showing dialog.');
           if (context.mounted) {
-            _showUpdateDialog(context, latestVersion, downloadUrl, updateType == 'force', releaseNotes);
+            _showUpdateDialog(context, latestVersion, downloadUrl ?? '', updateType == 'force', releaseNotes);
           }
         } else {
           debugPrint('No update needed.');
+          if (showNoUpdateMsg && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('You are on the latest version!'), backgroundColor: Colors.green),
+            );
+          }
         }
       }
     } catch (e) {
       debugPrint('Error checking for updates: $e');
+      if (showNoUpdateMsg && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update check failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   static bool _isVersionNewer(String current, String latest) {
-    // Sanitize versions (remove +buildNumber part)
-    String cleanCurrent = current.split('+')[0];
-    String cleanLatest = latest.split('+')[0];
+    // Sanitize versions (remove +buildNumber part and whitespace)
+    String cleanCurrent = current.split('+')[0].trim();
+    String cleanLatest = latest.split('+')[0].trim();
+
+    if (cleanCurrent == cleanLatest) return false;
 
     List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
-    for (int i = 0; i < latestParts.length; i++) {
-      int currentPart = i < currentParts.length ? currentParts[i] : 0;
-      if (latestParts[i] > currentPart) return true;
-      if (latestParts[i] < currentPart) return false;
+    int maxLength = currentParts.length > latestParts.length ? currentParts.length : latestParts.length;
+
+    for (int i = 0; i < maxLength; i++) {
+      int c = i < currentParts.length ? currentParts[i] : 0;
+      int l = i < latestParts.length ? latestParts[i] : 0;
+      if (l > c) return true;
+      if (l < c) return false;
     }
     return false;
   }
@@ -85,24 +102,27 @@ class VersionService {
             children: [
               const Icon(Icons.system_update, color: Color(0xFF195243)),
               const SizedBox(width: 12),
-              Text(isForce ? 'Critical Update' : 'New Update Available'),
+              Text(isForce ? 'Critical Update' : 'New Update Available', style: const TextStyle(fontSize: 18)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Version $version is now available.', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              if (notes != null && notes.isNotEmpty) ...[
-                const Text('What\'s new:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                Text(notes, style: const TextStyle(fontSize: 14)),
-                const SizedBox(height: 16),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Version $version is now available.', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                if (notes != null && notes.trim().isNotEmpty) ...[
+                  const Text('What\'s new:', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(notes.trim(), style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 16),
+                ],
+                Text(isForce 
+                  ? 'This update is required to continue using the app.' 
+                  : 'Would you like to download the latest version for better performance?'),
               ],
-              Text(isForce 
-                ? 'This update is required to continue using the app.' 
-                : 'Would you like to download the latest version for better performance?'),
-            ],
+            ),
           ),
           actions: [
             if (!isForce)
@@ -111,7 +131,11 @@ class VersionService {
                 child: const Text('Later', style: TextStyle(color: Colors.grey)),
               ),
             ElevatedButton(
-              onPressed: () => _launchURL(url),
+              onPressed: () {
+                if (url.isNotEmpty) {
+                  _launchURL(url);
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF195243),
                 foregroundColor: Colors.white,
@@ -126,9 +150,16 @@ class VersionService {
   }
 
   static Future<void> _launchURL(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(url);
+      // Try external application mode first
+      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!success) {
+        // Fallback to default
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      debugPrint('Could not launch update URL: $e');
     }
   }
 }
