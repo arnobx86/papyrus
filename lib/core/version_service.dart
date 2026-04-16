@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'app_config.dart';
+import 'version_service.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,10 +44,8 @@ class VersionService {
         final updateType = data['update_type']; // 'soft' or 'force'
         final releaseNotes = data['release_notes'];
 
-        debugPrint('Comparing: Current["$currentVersion"] vs Latest["$latestVersion"]');
-
         if (latestVersion.isNotEmpty && _isVersionNewer(currentVersion, latestVersion)) {
-          debugPrint('Update available! Showing dialog.');
+          debugPrint('Update available! Current: $currentVersion, Latest: $latestVersion');
           if (context.mounted) {
             _showUpdateDialog(context, latestVersion, downloadUrl ?? '', updateType == 'force', releaseNotes);
           }
@@ -70,11 +69,11 @@ class VersionService {
   }
 
   static bool _isVersionNewer(String current, String latest) {
-    // Sanitize versions (remove +buildNumber part and whitespace)
-    String cleanCurrent = current.split('+')[0].trim();
-    String cleanLatest = latest.split('+')[0].trim();
+    // Sanitize versions (remove 'v' prefix, +buildNumber part and whitespace)
+    String cleanCurrent = current.toLowerCase().replaceAll('v', '').split('+')[0].trim();
+    String cleanLatest = latest.toLowerCase().replaceAll('v', '').split('+')[0].trim();
 
-    if (cleanCurrent == cleanLatest) return false;
+    if (cleanCurrent == cleanLatest || cleanLatest.isEmpty) return false;
 
     List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();

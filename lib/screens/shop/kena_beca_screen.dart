@@ -162,7 +162,7 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
       debugPrint('KenaBecaScreen: Handling purchase $eventType for ${newRecord?['id'] ?? oldRecord?['id']}');
 
       setState(() {
-        if (eventType == 'UPDATE') {
+        if (eventType == 'UPDATE' && newRecord != null) {
           final purchaseId = newRecord['id'];
           final index = _purchases.indexWhere((p) => p['id'] == purchaseId);
           if (index != -1) {
@@ -173,11 +173,11 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
             _purchases.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
             debugPrint('KenaBecaScreen: Added missing purchase $purchaseId');
           }
-        } else if (eventType == 'INSERT') {
+        } else if (eventType == 'INSERT' && newRecord != null) {
           _purchases.add(newRecord);
           _purchases.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
           debugPrint('KenaBecaScreen: Inserted new purchase ${newRecord['id']}');
-        } else if (eventType == 'DELETE') {
+        } else if (eventType == 'DELETE' && oldRecord != null) {
           final purchaseId = oldRecord['id'];
           _purchases.removeWhere((p) => p['id'] == purchaseId);
           debugPrint('KenaBecaScreen: Deleted purchase $purchaseId');
@@ -197,7 +197,7 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
       debugPrint('KenaBecaScreen: Handling sale $eventType for ${newRecord?['id'] ?? oldRecord?['id']}');
 
       setState(() {
-        if (eventType == 'UPDATE') {
+        if (eventType == 'UPDATE' && newRecord != null) {
           final saleId = newRecord['id'];
           final index = _sales.indexWhere((s) => s['id'] == saleId);
           if (index != -1) {
@@ -208,11 +208,11 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
             _sales.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
             debugPrint('KenaBecaScreen: Added missing sale $saleId');
           }
-        } else if (eventType == 'INSERT') {
+        } else if (eventType == 'INSERT' && newRecord != null) {
           _sales.add(newRecord);
           _sales.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
           debugPrint('KenaBecaScreen: Inserted new sale ${newRecord['id']}');
-        } else if (eventType == 'DELETE') {
+        } else if (eventType == 'DELETE' && oldRecord != null) {
           final saleId = oldRecord['id'];
           _sales.removeWhere((s) => s['id'] == saleId);
           debugPrint('KenaBecaScreen: Deleted sale $saleId');
@@ -232,7 +232,7 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
       debugPrint('KenaBecaScreen: Handling return $eventType for ${newRecord?['id'] ?? oldRecord?['id']}');
 
       setState(() {
-        if (eventType == 'UPDATE') {
+        if (eventType == 'UPDATE' && newRecord != null) {
           final returnId = newRecord['id'];
           final index = _returns.indexWhere((r) => r['id'] == returnId);
           if (index != -1) {
@@ -242,10 +242,10 @@ class _KenaBecaScreenState extends State<KenaBecaScreen> {
             _returns.add(newRecord);
             debugPrint('KenaBecaScreen: Added missing return $returnId');
           }
-        } else if (eventType == 'INSERT') {
+        } else if (eventType == 'INSERT' && newRecord != null) {
           _returns.add(newRecord);
           debugPrint('KenaBecaScreen: Inserted new return ${newRecord['id']}');
-        } else if (eventType == 'DELETE') {
+        } else if (eventType == 'DELETE' && oldRecord != null) {
           final returnId = oldRecord['id'];
           _returns.removeWhere((r) => r['id'] == returnId);
           debugPrint('KenaBecaScreen: Deleted return $returnId');
