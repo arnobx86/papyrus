@@ -15,4 +15,13 @@
 - **UI Tweaks**: Added SKU visibility in product lists.
 
 ---
+## 🩹 Hotfix & Maintenance (Latest)
+- **Dashboard Stability**: Resolved a critical "Null check" crash in Kena Beca screen during real-time data synchronization.
+- **Update System Polish**:
+    - Fixed an issue where the update popup incorrectly appeared for users already on the latest version.
+    - Resolved a bug preventing the "Update Now" download button from responding on Android 11+.
+    - Added a manual "Check for Update" option in Settings for better accessibility.
+- **Improved Accuracy**: Dynamically fetching app version from system information rather than hardcoded labels.
+
+---
 *Papyrus: Grow your business today.* 🌿📱
