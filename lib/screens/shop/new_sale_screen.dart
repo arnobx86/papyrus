@@ -396,6 +396,8 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
 
       await context.read<ShopProvider>().logActivity(
         action: widget.editSale != null ? 'Update Sale' : 'New Sale',
+        entityType: 'sale',
+        entityId: sale['id'],
         details: {'message': '${widget.editSale != null ? 'Updated' : 'Recorded'} sale of ৳$_grandTotal for ${_invoiceController.text}'},
       );
 

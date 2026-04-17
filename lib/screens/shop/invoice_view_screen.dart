@@ -45,16 +45,27 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
       final itemsResponse = await supabase.from(itemsTable).select().eq(fk, widget.id);
       final items = itemsResponse as List;
 
-      final creatorId = transaction['user_id'] ?? transaction['created_by'];
       String invoicedBy = 'Unknown';
 
-      if (creatorId != null) {
-        try {
+      // 1. Try to deduce the creator from activity_logs
+      try {
+        final activities = await supabase
+            .from('activity_logs')
+            .select('user_id')
+            .or('entity_id.eq.${widget.id},details->>message.ilike.%${transaction['invoice_number']}%')
+            .inFilter('action', ['New Sale', 'New Purchase', 'Update Sale', 'Update Purchase'])
+            .order('created_at', ascending: true)
+            .limit(1);
+
+        if (activities.isNotEmpty && activities.first['user_id'] != null) {
+          final creatorId = activities.first['user_id'];
           final profile = await supabase.from('profiles').select('username, full_name, email').eq('id', creatorId).maybeSingle();
           if (profile != null) {
             invoicedBy = profile['username'] ?? profile['full_name'] ?? profile['email'] ?? 'Unknown';
           }
-        } catch (_) {}
+        }
+      } catch (e) {
+        debugPrint('Error finding creator from activity logs: $e');
       }
 
       if (invoicedBy == 'Unknown') {

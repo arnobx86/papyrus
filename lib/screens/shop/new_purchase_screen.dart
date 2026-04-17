@@ -425,6 +425,8 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
 
       await context.read<ShopProvider>().logActivity(
         action: widget.editPurchase != null ? 'Update Purchase' : 'New Purchase',
+        entityType: 'purchase',
+        entityId: purchase['id'],
         details: {'message': '${widget.editPurchase != null ? 'Updated' : 'Recorded'} purchase of ৳$_grandTotal for ${_invoiceController.text}'},
       );
 
