@@ -45,6 +45,7 @@ import 'screens/shop/activity_history_screen.dart';
 import 'screens/shop/notifications_screen.dart';
 import 'screens/shop/privacy_policy_screen.dart';
 import 'screens/shop/terms_service_screen.dart';
+import 'screens/shop/daily_report_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -297,6 +298,10 @@ GoRouter _createRouter(AuthProvider authProvider, ShopProvider shopProvider) {
       GoRoute(
         path: '/activity-history',
         builder: (BuildContext context, GoRouterState state) => const ActivityHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/daily-report',
+        builder: (BuildContext context, GoRouterState state) => const DailyReportScreen(),
       ),
       GoRoute(
         path: '/privacy',

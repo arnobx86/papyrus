@@ -110,9 +110,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final today = DateTime.now().toIso8601String().split('T')[0];
 
       final results = await Future.wait([
+        // Today's Total Sales (Revenue)
         supabase.from('sales').select('total_amount').eq('shop_id', shopId).gte('created_at', today),
+        // Today's Total Purchases
         supabase.from('purchases').select('total_amount').eq('shop_id', shopId).gte('created_at', today),
-        supabase.from('transactions').select('amount').eq('shop_id', shopId).eq('type', 'expense').gte('created_at', today),
+        // Today's Total Expenses (using transaction_date for accuracy)
+        supabase.from('transactions').select('amount').eq('shop_id', shopId).eq('type', 'expense').eq('transaction_date', today),
         supabase.from('products').select('stock').eq('shop_id', shopId),
       ]);
 
@@ -279,15 +282,18 @@ class _HomeScreenState extends State<HomeScreen> {
                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.2)),
               const SizedBox(height: 24),
               Row(
-               children: [
-                 if (canCreateSale) ...[
-                   _buildQuickActionButton(LucideIcons.plus, 'Sale', () => context.push('/new-sale')),
-                   const SizedBox(width: 12),
-                 ],
-                 if (canManageProducts)
-                   _buildQuickActionButton(LucideIcons.box, 'Stock', () => context.push('/products')),
-               ],
-             ),
+                children: [
+                  if (canCreateSale) ...[
+                    _buildQuickActionButton(LucideIcons.plus, 'Sale', () => context.push('/new-sale')),
+                    const SizedBox(width: 12),
+                  ],
+                  if (canManageProducts) ...[
+                    _buildQuickActionButton(LucideIcons.box, 'Stock', () => context.push('/products')),
+                    const SizedBox(width: 12),
+                  ],
+                  _buildQuickActionButton(LucideIcons.barChart2, 'Report', () => context.push('/daily-report')),
+                ],
+              ),
             ],
           ),
         ],

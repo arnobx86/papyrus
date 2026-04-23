@@ -8,6 +8,7 @@ import '../../core/shop_provider.dart';
 import '../../core/notification_service.dart';
 import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
+import '../../core/data_refresh_notifier.dart';
 
 class AyBayScreen extends StatefulWidget {
   const AyBayScreen({super.key});
@@ -472,9 +473,22 @@ class _AyBayScreenState extends State<AyBayScreen> {
       if (canDeleteDirectly) {
         try {
           final supabase = Supabase.instance.client;
+          
+          // Bidirectional sync: If this transaction came from the Ledger, delete it there too
+          if (transaction['reference_type'] == 'manual' && transaction['reference_id'] != null) {
+            await supabase.from('ledger_entries').delete().eq('id', transaction['reference_id']);
+          }
+          
           await supabase.from('transactions').delete().eq('id', transaction['id']);
 
           if (mounted) {
+            // Notify other screens to refresh
+            context.read<DataRefreshNotifier>().notify([
+              DataChannel.transactions,
+              DataChannel.wallets,
+              DataChannel.ledger,
+            ]);
+
             // Log the deletion of transaction
             context.read<ShopProvider>().logActivity(
               action: 'Delete Transaction',
@@ -546,17 +560,28 @@ class _AyBayScreenState extends State<AyBayScreen> {
         }
         debugPrint('Total transactions: ${txList.length}');
         
-        // Client-side sort to ensure most recent first
+        // Client-side sort to ensure most recent first by actual transaction date
         txList.sort((a, b) {
           try {
-            final aCreated = a['created_at'];
-            final bCreated = b['created_at'];
-            if (aCreated == null || bCreated == null) return 0;
-            final aTime = DateTime.parse(aCreated as String);
-            final bTime = DateTime.parse(bCreated as String);
+            // Use transaction_date if available, otherwise fall back to created_at
+            final aDate = a['transaction_date'] ?? a['created_at'];
+            final bDate = b['transaction_date'] ?? b['created_at'];
+            
+            if (aDate == null || bDate == null) return 0;
+            
+            final aTime = DateTime.parse(aDate.toString());
+            final bTime = DateTime.parse(bDate.toString());
+            
             final timeCompare = bTime.compareTo(aTime); // Descending: newest first
             if (timeCompare != 0) return timeCompare;
-            // Secondary sort by id (UUIDs are generated in order)
+            
+            // Secondary sort by created_at (if transaction_dates were the same)
+            final aCreated = a['created_at'] != null ? DateTime.parse(a['created_at'].toString()) : DateTime(0);
+            final bCreated = b['created_at'] != null ? DateTime.parse(b['created_at'].toString()) : DateTime(0);
+            final createdCompare = bCreated.compareTo(aCreated);
+            if (createdCompare != 0) return createdCompare;
+
+            // Final fallback by id
             final aId = (a['id'] as String?) ?? '';
             final bId = (b['id'] as String?) ?? '';
             return bId.compareTo(aId);
