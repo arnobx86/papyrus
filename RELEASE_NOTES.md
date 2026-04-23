@@ -1,3 +1,24 @@
+# Release Notes - v1.0.707
+
+## 🚀 New Features
+
+- **Daily Business Report**: A comprehensive new dashboard feature that provides a complete financial snapshot (দিনের হিসাব) for any selected date.
+  - Track total Sales, Purchases, and cash flow in one place.
+  - View cumulative **Final Cash Balance** at the end of each day.
+  - See "Today's Net" performance (Profit/Deficit) at a glance.
+  - Support for floating-point (decimal) values for precise accounting.
+  - Instant data updates when switching dates.
+
+## 🛠️ Key Fixes & Improvements
+
+- **Fixed Double Stock Deduction**: Resolved a critical issue where editing a sale caused stock to be deducted twice. Updated RLS security policies to ensure old items are correctly removed before new ones are added.
+- **Accurate Dashboard Metrics**: Today's Cash, Expense, and Sales stats now use actual transaction dates rather than database timestamps, ensuring accuracy even for back-dated entries.
+- **Smart Transaction Ordering**: The Ay-Bay transaction list is now intelligently sorted by actual transaction date (most recent first).
+- **Ledger-Transaction Sync**: Improved bidirectional synchronization between person ledgers and the cash book (Ay-Bay).
+- **Time-Stamp Collision Fix**: Fixed a bug where multiple transactions on the same day could cause sorting or data integrity issues due to identical timestamps.
+
+---
+
 # Release Notes - v1.0.706
 
 ## 🚀 Key Improvements
