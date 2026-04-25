@@ -1,30 +1,20 @@
-# Release Notes - v1.0.8
+# Release Notes - v1.0.9
 
-## 🚀 New Features & Major Updates
+## 🚀 Enhancements & Reporting Updates
 
-### 💰 Digital Cash Flow & Reporting (Digital Khata)
-- **Daily Cash Flow View**: Completely redesigned the Report screen into a professional "Digital Cash Book" experience.
-  - **Opening & Closing Balances**: Automatically calculates and displays the opening balance (previous day's closing) and final closing balance.
-  - **Income vs Expenditure**: Side-by-side categorization of all money moving in (Sales, Received, Income) and out (Purchases, Payments, Expenses).
-  - **PDF & Print Support**: Added professional A4 report generation. Download, share, or print your daily summary with a single tap.
-  - **Shop Branding**: Reports now include your shop name, address, phone number, and custom logo/info settings.
+### 📄 Professional Daily Report PDF
+- **Streamlined Layout**: Optimized the Daily Report PDF for a cleaner, more professional appearance.
+- **Simplified Labels**: Main transaction titles in the PDF are now concise (e.g., "Sale", "Purchase", "Received", "Payment"), while full details remain available in the app's interactive view.
+- **Detailed Descriptions**: Synchronized the PDF with the app UI to include full transaction notes/descriptions under each entry, ensuring a comprehensive audit trail.
+- **Symmetrical Design**: Improved A4 alignment for opening and closing balance boxes.
 
-### ⭐ Default Wallet Management
-- **One-Tap Transactions**: Added a "Star" feature to wallets. You can now set a default wallet that will be automatically selected across all screens (Sales, Purchases, Ay-Bay, and Ledgers).
-- **Reduced Effort**: Streamlines the checkout process by pre-filling your most used payment method.
-
-## 🛠️ Key Fixes & Improvements
-
-- **Descriptive Transactions**: Redesigned transaction naming logic. Reports now show clear details like "Received from [Person Name]", "Paid to [Supplier]", or specific "Category Names" instead of generic labels.
-- **Data Integrity Overhaul**: 
-  - Added `party_name` and `transaction_date` to all core transactions.
-  - Fixed a "Red Screen" type mismatch error in the Person Ledger transaction dialog.
-  - Fixed an issue where Sales and Purchases were missing from daily summaries if back-dated.
-- **Robust Boolean Handling**: Improved app-wide compatibility for default settings, ensuring they work reliably across all device types and database states.
+### 💰 Financial Accuracy
+- **Smart Transaction Naming**: Improved the logic for identifying Sales, Purchases, and Person Ledger transactions. It now automatically pulls invoice numbers and person names using advanced pattern matching across multiple database fields.
+- **Unified Logic**: Consolidated transaction naming across the entire app (Screen + PDF) to ensure data consistency.
 
 ---
 
-# Release Notes - v1.0.707
+# Release Notes - v1.0.8
 
-## 🚀 New Features
+## 🚀 New Features & Major Updates
 ...

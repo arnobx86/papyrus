@@ -144,6 +144,31 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     }
   }
 
+  String _getTransactionName(Map<String, dynamic> t, {bool simplify = false}) {
+    final type = t['type'] as String;
+    final refType = t['reference_type'] as String?;
+    final partyName = t['party_name'] as String?;
+    final category = (t['category'] as String?)?.toLowerCase();
+    final note = (t['note'] as String?)?.trim() ?? '';
+
+    if (refType == 'sale' || category == 'sale') {
+      if (simplify) return 'Sale';
+      final inv = note.split(' ').last;
+      return (inv.contains('-') || inv.startsWith('S-')) ? 'Sale $inv' : 'Sale';
+    } else if (refType == 'purchase' || category == 'purchase') {
+      if (simplify) return 'Purchase';
+      final inv = note.split(' ').last;
+      return (inv.contains('-') || inv.startsWith('P-')) ? 'Purchase $inv' : 'Purchase';
+    } else if (category == 'received' || type == 'received') {
+      return simplify ? 'Received' : 'Received from ${partyName ?? 'Customer'}';
+    } else if (category == 'payment' || type == 'payment') {
+      return simplify ? 'Payment' : 'Paid to ${partyName ?? 'Supplier'}';
+    } else if (t['category'] != null) {
+      return t['category'];
+    }
+    return type.toUpperCase();
+  }
+
   Future<Uint8List> _generatePdf() async {
     final shop = context.read<ShopProvider>().currentShop;
     final curr = shop?.metadata?['currency'] ?? '৳';
@@ -229,18 +254,20 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         border: pw.TableBorder.all(color: PdfColors.grey300),
                         children: [
                           ..._incomeTransactions.map((t) {
-                            final type = t['type'] as String;
-                            final refType = t['reference_type'] as String?;
-                            final partyName = t['party_name'] as String?;
-                            final category = t['category'] as String?;
-                            String name = 'Transaction';
-                            if (refType == 'sale') name = 'Sale';
-                            else if (type == 'received') name = 'Recv: ${partyName ?? 'Customer'}';
-                            else if (category != null) name = category;
-
+                            String name = _getTransactionName(t, simplify: true);
                             return pw.TableRow(
                               children: [
-                                pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(name, style: const pw.TextStyle(fontSize: 9))),
+                                pw.Padding(
+                                  padding: const pw.EdgeInsets.all(5),
+                                  child: pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text(name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                      if (t['note'] != null && t['note'].toString().isNotEmpty)
+                                        pw.Text(t['note'].toString(), style: pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                                    ],
+                                  ),
+                                ),
                                 pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('$curr ${_formatCurrency(double.tryParse(t['amount'].toString()) ?? 0)}', style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.right)),
                               ],
                             );
@@ -278,18 +305,20 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         border: pw.TableBorder.all(color: PdfColors.grey300),
                         children: [
                           ..._expenseTransactions.map((t) {
-                            final type = t['type'] as String;
-                            final refType = t['reference_type'] as String?;
-                            final partyName = t['party_name'] as String?;
-                            final category = t['category'] as String?;
-                            String name = 'Transaction';
-                            if (refType == 'purchase') name = 'Purchase';
-                            else if (type == 'payment') name = 'Paid: ${partyName ?? 'Supplier'}';
-                            else if (category != null) name = category;
-
+                            String name = _getTransactionName(t, simplify: true);
                             return pw.TableRow(
                               children: [
-                                pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(name, style: const pw.TextStyle(fontSize: 9))),
+                                pw.Padding(
+                                  padding: const pw.EdgeInsets.all(5),
+                                  child: pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text(name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                      if (t['note'] != null && t['note'].toString().isNotEmpty)
+                                        pw.Text(t['note'].toString(), style: pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                                    ],
+                                  ),
+                                ),
                                 pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('$curr ${_formatCurrency(double.tryParse(t['amount'].toString()) ?? 0)}', style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.right)),
                               ],
                             );
@@ -556,24 +585,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.withOpacity(0.1)),
                   itemBuilder: (context, index) {
                     final t = txs[index];
-                    final type = t['type'] as String;
-                    final refType = t['reference_type'] as String?;
-                    final partyName = t['party_name'] as String?;
-                    final category = t['category'] as String?;
-
-                    String source = 'Transaction';
-
-                    if (refType == 'sale') {
-                      source = 'Sale';
-                    } else if (refType == 'purchase') {
-                      source = 'Purchase';
-                    } else if (type == 'received') {
-                      source = 'Received from ${partyName ?? 'Customer'}';
-                    } else if (type == 'payment') {
-                      source = 'Paid to ${partyName ?? 'Supplier'}';
-                    } else if (category != null) {
-                      source = category;
-                    }
+                    String source = _getTransactionName(t);
 
                     return ListTile(
                       dense: true,
