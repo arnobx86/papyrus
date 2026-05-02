@@ -32,10 +32,36 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'An unexpected error occurred. Please try again.';
+        
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (errorStr.contains('email not confirmed')) {
+          errorMessage = 'Your email hasn\'t been confirmed yet. Please check your inbox.';
+        } else if (errorStr.contains('network') || errorStr.contains('socketexception')) {
+          errorMessage = 'Connection failed. Please check your internet connection.';
+        } else if (errorStr.contains('too many requests')) {
+          errorMessage = 'Too many failed attempts. Please try again later.';
+        } else {
+          // Fallback to a cleaner version of the error message if possible
+          errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('AuthException: ', '');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(LucideIcons.alertTriangle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(errorMessage)),
+              ],
+            ),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            duration: const Duration(seconds: 4),
           ),
         );
       }

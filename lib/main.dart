@@ -7,6 +7,7 @@ import 'core/auth_provider.dart';
 import 'core/shop_provider.dart';
 import 'core/data_refresh_notifier.dart';
 import 'core/app_config.dart';
+import 'core/connectivity_service.dart';
 import 'widgets/main_layout.dart';
 
 // Import screens...
@@ -66,6 +67,7 @@ Future<void> main() async {
         providers: [
           ChangeNotifierProvider(create: (_) => AuthProvider()),
           ChangeNotifierProvider(create: (_) => ShopProvider()),
+          ChangeNotifierProvider(create: (_) => ConnectivityService()),
           ChangeNotifierProvider(create: (_) => DataRefreshNotifier()),
         ],
         child: const MyApp(),
@@ -90,6 +92,7 @@ Future<void> main() async {
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => ShopProvider()),
+            ChangeNotifierProvider(create: (_) => ConnectivityService()),
             ChangeNotifierProvider(create: (_) => DataRefreshNotifier()),
           ],
           child: const MyApp(),

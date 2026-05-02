@@ -9,6 +9,8 @@ import '../../core/notification_service.dart';
 import '../../core/data_refresh_notifier.dart';
 import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class AllPurchasesScreen extends StatefulWidget {
   const AllPurchasesScreen({super.key});
@@ -70,6 +72,20 @@ class _AllPurchasesScreenState extends State<AllPurchasesScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('AllPurchasesScreen: Offline, loading from cache');
+      final cached = await LocalCacheService.getPurchases();
+      if (mounted) {
+        setState(() {
+          _purchases = cached;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
@@ -79,16 +95,11 @@ class _AllPurchasesScreenState extends State<AllPurchasesScreen> {
           .eq('shop_id', shopId)
           .order('created_at', ascending: false);
       
+      final purchasesList = response as List;
+      await LocalCacheService.savePurchases(purchasesList);
+
       if (mounted) {
-        final purchasesList = response as List;
-        // Log BEFORE sorting
-        debugPrint('=== PURCHASES ORDERING DEBUG ===');
-        if (purchasesList.isNotEmpty) {
-          debugPrint('BEFORE sort - First item: ${purchasesList.first['created_at']}, Last item: ${purchasesList.last['created_at']}');
-        }
-        debugPrint('Total purchases: ${purchasesList.length}');
-        
-        // Client-side sort to ensure most recent first
+        // Client-side sort
         purchasesList.sort((a, b) {
           try {
             final aCreated = a['created_at'];
@@ -96,23 +107,16 @@ class _AllPurchasesScreenState extends State<AllPurchasesScreen> {
             if (aCreated == null || bCreated == null) return 0;
             final aTime = DateTime.parse(aCreated as String);
             final bTime = DateTime.parse(bCreated as String);
-            final timeCompare = bTime.compareTo(aTime); // Descending: newest first
+            final timeCompare = bTime.compareTo(aTime);
             if (timeCompare != 0) return timeCompare;
-            // Secondary sort by id (UUIDs are generated in order)
             final aId = (a['id'] as String?) ?? '';
             final bId = (b['id'] as String?) ?? '';
             return bId.compareTo(aId);
           } catch (e) {
-            debugPrint('Error sorting purchases: $e');
             return 0;
           }
         });
         
-        // Log AFTER sorting
-        if (purchasesList.isNotEmpty) {
-          debugPrint('AFTER sort - First item: ${purchasesList.first['created_at']}, Last item: ${purchasesList.last['created_at']}');
-        }
-        debugPrint('=== END PURCHASES ORDERING DEBUG ===');
         setState(() {
           _purchases = purchasesList;
           _isLoading = false;
@@ -120,7 +124,13 @@ class _AllPurchasesScreenState extends State<AllPurchasesScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching purchases: $e');
-      if (mounted) setState(() => _isLoading = false);
+      final cached = await LocalCacheService.getPurchases();
+      if (mounted) {
+        setState(() {
+          if (cached.isNotEmpty) _purchases = cached;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -349,6 +359,14 @@ class _AllPurchasesScreenState extends State<AllPurchasesScreen> {
                                   ],
                                 ),
                                 onLongPress: () {
+                                  final isOnline = context.read<ConnectivityService>().isOnline;
+                                  if (!isOnline) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Offline mode – action not available'))
+                                    );
+                                    return;
+                                  }
+
                                   final auth = context.read<AuthProvider>();
                                   final canEdit = auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.editPurchase);
                                   final canDelete = auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.deletePurchase);

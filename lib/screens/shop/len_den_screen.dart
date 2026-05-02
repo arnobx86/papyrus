@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/shop_provider.dart';
 import '../../core/data_refresh_notifier.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class LenDenScreen extends StatefulWidget {
   const LenDenScreen({super.key});
@@ -106,6 +108,23 @@ class _LenDenScreenState extends State<LenDenScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('LenDenScreen: Offline, loading from cache');
+      final cachedParties = await LocalCacheService.getParties();
+      final cachedLedger = await LocalCacheService.getLedger();
+      
+      if (mounted) {
+        setState(() {
+          _parties = cachedParties;
+          _ledger = cachedLedger;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
@@ -115,9 +134,15 @@ class _LenDenScreenState extends State<LenDenScreen> {
       ]);
 
       if (mounted) {
+        final parties = results[0] as List;
+        final ledger = results[1] as List;
+        
+        await LocalCacheService.saveParties(parties);
+        await LocalCacheService.saveLedger(ledger);
+
         setState(() {
-          _parties = results[0] as List;
-          _ledger = results[1] as List;
+          _parties = parties;
+          _ledger = ledger;
           _isLoading = false;
         });
       }
@@ -335,28 +360,38 @@ class _LenDenScreenState extends State<LenDenScreen> {
                                     PopupMenuButton<String>(
                                       icon: const Icon(LucideIcons.moreVertical, size: 16, color: Colors.grey),
                                       onSelected: (value) => _handlePersonMenu(value, person),
-                                      itemBuilder: (context) => [
-                                        const PopupMenuItem<String>(
-                                          value: 'edit',
-                                          child: Row(
-                                            children: [
-                                              Icon(LucideIcons.pencil, size: 16),
-                                              SizedBox(width: 8),
-                                              Text('Edit'),
-                                            ],
+                                      itemBuilder: (context) {
+                                        final isOnline = context.read<ConnectivityService>().isOnline;
+                                        return [
+                                          PopupMenuItem<String>(
+                                            value: 'edit',
+                                            enabled: isOnline,
+                                            child: Row(
+                                              children: [
+                                                Icon(LucideIcons.pencil, size: 16, color: isOnline ? null : Colors.grey),
+                                                const SizedBox(width: 8),
+                                                Text('Edit', style: TextStyle(color: isOnline ? null : Colors.grey)),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        const PopupMenuItem<String>(
-                                          value: 'delete',
-                                          child: Row(
-                                            children: [
-                                              Icon(LucideIcons.trash2, size: 16),
-                                              SizedBox(width: 8),
-                                              Text('Delete'),
-                                            ],
+                                          PopupMenuItem<String>(
+                                            value: 'delete',
+                                            enabled: isOnline,
+                                            child: Row(
+                                              children: [
+                                                Icon(LucideIcons.trash2, size: 16, color: isOnline ? Colors.red : Colors.grey),
+                                                const SizedBox(width: 8),
+                                                Text('Delete', style: TextStyle(color: isOnline ? Colors.red : Colors.grey)),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          if (!isOnline)
+                                            const PopupMenuItem<String>(
+                                              enabled: false,
+                                              child: Text('Offline mode', style: TextStyle(fontSize: 10, color: Colors.orange)),
+                                            ),
+                                        ];
+                                      },
                                     ),
                                   ],
                                 ),
@@ -368,7 +403,7 @@ class _LenDenScreenState extends State<LenDenScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: context.watch<ConnectivityService>().isOnline ? FloatingActionButton.extended(
         onPressed: () async {
           final refresh = await context.push<bool>('/add-person');
           if (refresh == true && mounted) {
@@ -377,7 +412,7 @@ class _LenDenScreenState extends State<LenDenScreen> {
         },
         label: const Text('Add'),
         icon: const Icon(LucideIcons.plus),
-      ),
+      ) : null,
     );
   }
 

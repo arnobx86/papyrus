@@ -9,6 +9,8 @@ import '../../core/notification_service.dart';
 import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
 import '../../core/data_refresh_notifier.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class AyBayScreen extends StatefulWidget {
   const AyBayScreen({super.key});
@@ -519,6 +521,21 @@ class _AyBayScreenState extends State<AyBayScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('AyBayScreen: Offline, loading from cache');
+      final cached = await LocalCacheService.getTransactions();
+      if (mounted && cached.isNotEmpty) {
+        setState(() {
+          _transactions = cached;
+          _filteredTransactions = _computeFilteredTransactions(cached);
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     if (mounted) {
       setState(() => _isLoading = true);
     }
@@ -555,65 +572,31 @@ class _AyBayScreenState extends State<AyBayScreen> {
 
       if (mounted) {
         final txList = txResponse as List;
-        // Log BEFORE sorting
-        debugPrint('=== AYBAY TRANSACTIONS ORDERING DEBUG ===');
-        if (txList.isNotEmpty) {
-          debugPrint('BEFORE sort - First item: ${txList.first['created_at']}, Last item: ${txList.last['created_at']}');
-        }
-        debugPrint('Total transactions: ${txList.length}');
-        
-        // Client-side sort to ensure most recent first by actual transaction date
+        await LocalCacheService.saveTransactions(txList);
+
+        // Client-side sort
         txList.sort((a, b) {
           try {
-            // Use transaction_date if available, otherwise fall back to created_at
             final aDate = a['transaction_date'] ?? a['created_at'];
             final bDate = b['transaction_date'] ?? b['created_at'];
-            
             if (aDate == null || bDate == null) return 0;
-            
             final aTime = DateTime.parse(aDate.toString());
             final bTime = DateTime.parse(bDate.toString());
-            
-            final timeCompare = bTime.compareTo(aTime); // Descending: newest first
+            final timeCompare = bTime.compareTo(aTime);
             if (timeCompare != 0) return timeCompare;
-            
-            // Secondary sort by created_at (if transaction_dates were the same)
             final aCreated = a['created_at'] != null ? DateTime.parse(a['created_at'].toString()) : DateTime(0);
             final bCreated = b['created_at'] != null ? DateTime.parse(b['created_at'].toString()) : DateTime(0);
             final createdCompare = bCreated.compareTo(aCreated);
             if (createdCompare != 0) return createdCompare;
-
-            // Final fallback by id
             final aId = (a['id'] as String?) ?? '';
             final bId = (b['id'] as String?) ?? '';
             return bId.compareTo(aId);
           } catch (e) {
-            debugPrint('Error sorting transactions: $e');
             return 0;
           }
         });
         
-        // Log AFTER sorting
-        if (txList.isNotEmpty) {
-          debugPrint('AFTER sort - First item: ${txList.first['created_at']}, Last item: ${txList.last['created_at']}');
-        }
-        debugPrint('=== END AYBAY TRANSACTIONS ORDERING DEBUG ===');
-        // Compute filtered transactions once
         final filtered = _computeFilteredTransactions(txList);
-        
-        // Debug logging for FILTERED list with FULL details
-        debugPrint('=== AYBAY FILTERED TRANSACTIONS DEBUG (FULL) ===');
-        debugPrint('Filtered count: ${filtered.length}');
-        if (filtered.isNotEmpty) {
-          debugPrint('FILTERED First item: ${filtered.first['created_at']}, type=${filtered.first['type']}');
-          debugPrint('FILTERED Last item: ${filtered.last['created_at']}, type=${filtered.last['type']}');
-          // Log ALL filtered items in order with full details
-          for (var i = 0; i < filtered.length; i++) {
-            final tx = filtered[i];
-            debugPrint('  [$i] created_at=${tx['created_at']}, type=${tx['type']}, category=${tx['category']}, id=${tx['id']}');
-          }
-        }
-        debugPrint('=== END AYBAY FILTERED TRANSACTIONS DEBUG (FULL) ===');
         
         setState(() {
           _transactions = txList;
@@ -621,18 +604,17 @@ class _AyBayScreenState extends State<AyBayScreen> {
           _filteredTransactions = filtered;
           _isLoading = false;
         });
-        
-        // Debug logging
-        debugPrint('AyBay: Fetched ${_transactions.length} transactions, showing ${_filteredTransactions.length}');
-        if (_transactions.isNotEmpty) {
-          debugPrint('AyBay: First transaction type: ${_transactions.first['type']}');
-          debugPrint('AyBay: First transaction created_at: ${_transactions.first['created_at']}');
-          debugPrint('AyBay: Last transaction created_at: ${_transactions.last['created_at']}');
-        }
       }
     } catch (e) {
       debugPrint('Error fetching data: $e');
-      if (mounted) {
+      final cached = await LocalCacheService.getTransactions();
+      if (mounted && cached.isNotEmpty) {
+        setState(() {
+          _transactions = cached;
+          _filteredTransactions = _computeFilteredTransactions(cached);
+          _isLoading = false;
+        });
+      } else if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -997,6 +979,13 @@ class _AyBayScreenState extends State<AyBayScreen> {
                                       PopupMenuButton<String>(
                                         icon: const Icon(LucideIcons.moreVertical, size: 18),
                                         onSelected: (value) {
+                                          final isOnline = context.read<ConnectivityService>().isOnline;
+                                          if (!isOnline) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Offline mode – action not available'))
+                                            );
+                                            return;
+                                          }
                                           if (value == 'edit') {
                                             _editTransaction(tx);
                                           } else if (value == 'delete') {
@@ -1037,14 +1026,14 @@ class _AyBayScreenState extends State<AyBayScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: context.watch<ConnectivityService>().isOnline ? FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/new-transaction');
           _fetchData(); // Refresh after adding transaction
         },
         label: const Text('Add'),
         icon: const Icon(LucideIcons.plus),
-      ),
+      ) : null,
     );
   }
 

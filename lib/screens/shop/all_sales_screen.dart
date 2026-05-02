@@ -9,6 +9,8 @@ import '../../core/notification_service.dart';
 import '../../core/data_refresh_notifier.dart';
 import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class AllSalesScreen extends StatefulWidget {
   const AllSalesScreen({super.key});
@@ -70,6 +72,20 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('AllSalesScreen: Offline, loading from cache');
+      final cached = await LocalCacheService.getSales();
+      if (mounted) {
+        setState(() {
+          _sales = cached;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
@@ -79,15 +95,10 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
           .eq('shop_id', shopId)
           .order('created_at', ascending: false);
       
+      final salesList = response as List;
+      await LocalCacheService.saveSales(salesList);
+
       if (mounted) {
-        final salesList = response as List;
-        // Log BEFORE sorting
-        debugPrint('=== SALES ORDERING DEBUG ===');
-        if (salesList.isNotEmpty) {
-          debugPrint('BEFORE sort - First item: ${salesList.first['created_at']}, Last item: ${salesList.last['created_at']}');
-        }
-        debugPrint('Total sales: ${salesList.length}');
-        
         // Client-side sort to ensure most recent first
         salesList.sort((a, b) {
           try {
@@ -98,21 +109,14 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
             final bTime = DateTime.parse(bCreated as String);
             final timeCompare = bTime.compareTo(aTime); // Descending: newest first
             if (timeCompare != 0) return timeCompare;
-            // Secondary sort by id (UUIDs are generated in order)
             final aId = (a['id'] as String?) ?? '';
             final bId = (b['id'] as String?) ?? '';
             return bId.compareTo(aId);
           } catch (e) {
-            debugPrint('Error sorting sales: $e');
             return 0;
           }
         });
         
-        // Log AFTER sorting
-        if (salesList.isNotEmpty) {
-          debugPrint('AFTER sort - First item: ${salesList.first['created_at']}, Last item: ${salesList.last['created_at']}');
-        }
-        debugPrint('=== END SALES ORDERING DEBUG ===');
         setState(() {
           _sales = salesList;
           _isLoading = false;
@@ -120,7 +124,13 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching sales: $e');
-      if (mounted) setState(() => _isLoading = false);
+      final cached = await LocalCacheService.getSales();
+      if (mounted) {
+        setState(() {
+          if (cached.isNotEmpty) _sales = cached;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -201,7 +211,7 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
       // Use RPC function to bypass PostgREST schema cache
       final result = await supabase.rpc('insert_approval_request', params: {
         'p_shop_id': shopId,
-        'p_requested_by': userId,  // Changed from p_requester_id to p_requested_by
+        'p_requested_by': userId,
         'p_action_type': actionType,
         'p_reference_id': refId,
         'p_details': {'reference_id': refId},
@@ -349,6 +359,14 @@ class _AllSalesScreenState extends State<AllSalesScreen> {
                                   ],
                                 ),
                                 onLongPress: () {
+                                  final isOnline = context.read<ConnectivityService>().isOnline;
+                                  if (!isOnline) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Offline mode – action not available'))
+                                    );
+                                    return;
+                                  }
+
                                   final auth = context.read<AuthProvider>();
                                   final canEdit = auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.editSale);
                                   final canDelete = auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.deleteSale);

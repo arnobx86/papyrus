@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../core/connectivity_service.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -9,6 +11,7 @@ class MainLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
+    final isOnline = context.watch<ConnectivityService>().isOnline;
     
     int currentIndex = 0;
     if (location.startsWith('/kena-becha')) {
@@ -20,7 +23,28 @@ class MainLayout extends StatelessWidget {
     }
 
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          if (!isOnline)
+            Container(
+              width: double.infinity,
+              color: Colors.orange.shade800,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(LucideIcons.wifiOff, color: Colors.white, size: 14),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline Mode – Viewing Cached Data',
+                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),

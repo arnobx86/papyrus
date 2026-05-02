@@ -7,6 +7,8 @@ import '../../core/shop_provider.dart';
 import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
 import '../../core/notification_service.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -118,6 +120,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('ProductsScreen: Offline, loading from cache');
+      final cached = await LocalCacheService.getProducts();
+      if (mounted) {
+        setState(() {
+          _products = cached;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
@@ -127,15 +143,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
           .eq('shop_id', shopId)
           .order('name');
       
+      final products = response as List;
+      await LocalCacheService.saveProducts(products);
+
       if (mounted) {
         setState(() {
-          _products = response as List;
+          _products = products;
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching products: $e');
-      if (mounted) setState(() => _isLoading = false);
+      // Fallback to cache on error
+      final cached = await LocalCacheService.getProducts();
+      if (mounted) {
+        setState(() {
+          if (cached.isNotEmpty) _products = cached;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -299,7 +325,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       appBar: AppBar(
         title: const Text('Products', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          if (auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.manageProducts))
+          if (context.read<ConnectivityService>().isOnline && (auth.currentRole == 'Owner' || Permissions.hasPermission(auth.currentPermissions, AppPermission.manageProducts)))
             IconButton(
               icon: const Icon(LucideIcons.plus),
               onPressed: () async {
@@ -420,7 +446,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ],
         ),
       ),
-      floatingActionButton: canManage ? FloatingActionButton(
+      floatingActionButton: (canManage && context.read<ConnectivityService>().isOnline) ? FloatingActionButton(
         onPressed: () async {
           final refresh = await context.push<bool>('/add-product');
           if (refresh == true) _fetchProducts();
@@ -442,7 +468,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (canManage) ...[
+              if (canManage && context.read<ConnectivityService>().isOnline) ...[
                 ListTile(
                   leading: const Icon(LucideIcons.pencil),
                   title: const Text('Edit'),
@@ -460,7 +486,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     _deleteProduct(product['id']);
                   },
                 ),
-              ] else 
+              ] else if (!context.read<ConnectivityService>().isOnline)
+                const ListTile(
+                  leading: Icon(LucideIcons.wifiOff),
+                  title: Text('Offline mode – action not available'),
+                )
+              else 
                 const ListTile(
                   leading: Icon(LucideIcons.info),
                   title: Text('No edit permission'),

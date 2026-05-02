@@ -8,6 +8,8 @@ import '../../core/auth_provider.dart';
 import '../../core/permissions.dart';
 import '../../core/data_refresh_notifier.dart';
 import '../../core/version_service.dart';
+import '../../core/connectivity_service.dart';
+import '../../core/local_cache_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,6 +106,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final shopId = context.read<ShopProvider>().currentShop?.id;
     if (shopId == null) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+
+    if (!isOnline) {
+      debugPrint('HomeScreen: Offline, loading summary from cache');
+      final cached = await LocalCacheService.getSummary();
+      if (mounted && cached.isNotEmpty) {
+        setState(() {
+          _todaySales = double.tryParse(cached['todaySales'].toString()) ?? 0;
+          _todayPurchases = double.tryParse(cached['todayPurchases'].toString()) ?? 0;
+          _todayExpense = double.tryParse(cached['todayExpense'].toString()) ?? 0;
+          _currentStock = double.tryParse(cached['currentStock'].toString()) ?? 0;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
@@ -119,18 +138,41 @@ class _HomeScreenState extends State<HomeScreen> {
         supabase.from('products').select('stock').eq('shop_id', shopId),
       ]);
 
+      final sales = (results[0] as List).fold(0.0, (s, i) => s + (double.tryParse(i['total_amount'].toString()) ?? 0));
+      final purchases = (results[1] as List).fold(0.0, (s, i) => s + (double.tryParse(i['total_amount'].toString()) ?? 0));
+      final expense = (results[2] as List).fold(0.0, (s, i) => s + (double.tryParse(i['amount'].toString()) ?? 0));
+      final stock = (results[3] as List).fold(0.0, (s, i) => s + (double.tryParse(i['stock'].toString()) ?? 0));
+
+      await LocalCacheService.saveSummary({
+        'todaySales': sales,
+        'todayPurchases': purchases,
+        'todayExpense': expense,
+        'currentStock': stock,
+      });
+
       if (mounted) {
         setState(() {
-          _todaySales = (results[0] as List).fold(0.0, (s, i) => s + (double.tryParse(i['total_amount'].toString()) ?? 0));
-          _todayPurchases = (results[1] as List).fold(0.0, (s, i) => s + (double.tryParse(i['total_amount'].toString()) ?? 0));
-          _todayExpense = (results[2] as List).fold(0.0, (s, i) => s + (double.tryParse(i['amount'].toString()) ?? 0));
-          _currentStock = (results[3] as List).fold(0.0, (s, i) => s + (double.tryParse(i['stock'].toString()) ?? 0));
+          _todaySales = sales;
+          _todayPurchases = purchases;
+          _todayExpense = expense;
+          _currentStock = stock;
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching summary: $e');
-      if (mounted) setState(() => _isLoading = false);
+      final cached = await LocalCacheService.getSummary();
+      if (mounted && cached.isNotEmpty) {
+        setState(() {
+          _todaySales = double.tryParse(cached['todaySales'].toString()) ?? 0;
+          _todayPurchases = double.tryParse(cached['todayPurchases'].toString()) ?? 0;
+          _todayExpense = double.tryParse(cached['todayExpense'].toString()) ?? 0;
+          _currentStock = double.tryParse(cached['currentStock'].toString()) ?? 0;
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -283,11 +325,11 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  if (canCreateSale) ...[
+                  if (canCreateSale && context.read<ConnectivityService>().isOnline) ...[
                     _buildQuickActionButton(LucideIcons.plus, 'Sale', () => context.push('/new-sale')),
                     const SizedBox(width: 12),
                   ],
-                  if (canManageProducts) ...[
+                  if (canManageProducts && context.read<ConnectivityService>().isOnline) ...[
                     _buildQuickActionButton(LucideIcons.box, 'Stock', () => context.push('/products')),
                     const SizedBox(width: 12),
                   ],
