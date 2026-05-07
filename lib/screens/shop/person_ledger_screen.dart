@@ -286,7 +286,7 @@ class _PersonLedgerScreenState extends State<PersonLedgerScreen> {
                     subtitle: Text(DateFormat('dd MMM, yyyy').format(selectedDate)),
                     trailing: const Icon(LucideIcons.calendar),
                     onTap: () async {
-                      final picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
+                      final picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now());
                       if (picked != null) setDialogState(() => selectedDate = picked);
                     },
                   ),

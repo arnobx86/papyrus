@@ -289,7 +289,7 @@ class _NewTransactionScreenState extends State<NewTransactionScreen> {
                 context: context,
                 initialDate: DateTime.now(),
                 firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
+                lastDate: DateTime.now(),
               );
               if (picked != null) {
                 _dateController.text = DateFormat('yyyy-MM-dd').format(picked);

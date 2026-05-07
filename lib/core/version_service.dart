@@ -45,6 +45,10 @@ class VersionService {
         final updateType = data['update_type']; // 'soft' or 'force'
         final releaseNotes = data['release_notes'];
 
+        debugPrint('Current Version: $currentVersion');
+        debugPrint('Latest Version: $latestVersion');
+        debugPrint('Update Type: $updateType');
+
         if (latestVersion.isNotEmpty && _isVersionNewer(currentVersion, latestVersion)) {
           debugPrint('Update available! Current: $currentVersion, Latest: $latestVersion');
 
@@ -99,12 +103,21 @@ class VersionService {
 
     int maxLength = currentParts.length > latestParts.length ? currentParts.length : latestParts.length;
 
+    debugPrint('Comparing: Current($cleanCurrent) vs Latest($cleanLatest)');
+
     for (int i = 0; i < maxLength; i++) {
       int c = i < currentParts.length ? currentParts[i] : 0;
       int l = i < latestParts.length ? latestParts[i] : 0;
-      if (l > c) return true;
-      if (l < c) return false;
+      if (l > c) {
+        debugPrint('Result: Newer version available');
+        return true;
+      }
+      if (l < c) {
+        debugPrint('Result: Current version is newer');
+        return false;
+      }
     }
+    debugPrint('Result: Versions are equal');
     return false;
   }
 

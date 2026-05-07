@@ -102,13 +102,11 @@ Future<void> main() async {
   );
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-
+// Router configuration
 GoRouter _createRouter(AuthProvider authProvider, ShopProvider shopProvider) {
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
-    refreshListenable: authProvider,
+    refreshListenable: Listenable.merge([authProvider, shopProvider]),
     redirect: (context, state) {
       final isLoggedIn = authProvider.session != null;
       final isAuthRoute = state.uri.path.startsWith('/login') || 
@@ -139,6 +137,11 @@ GoRouter _createRouter(AuthProvider authProvider, ShopProvider shopProvider) {
 
       // If user goes to / and has an active shop, redirect to shop-home
       if (state.uri.path == '/' && hasActiveShop) {
+        return '/shop-home';
+      }
+
+      // Automatically navigate away from shop-select if a shop is activated
+      if (hasActiveShop && isShopSelectRoute) {
         return '/shop-home';
       }
 
@@ -183,23 +186,26 @@ GoRouter _createRouter(AuthProvider authProvider, ShopProvider shopProvider) {
 
       // Protected + shop required routes (Wrapped in MainLayout)
       ShellRoute(
-        builder: (context, state, child) => MainLayout(child: child),
+        builder: (context, state, child) => MainLayout(
+          key: ValueKey('main_layout_${shopProvider.currentShop?.id}'),
+          child: child,
+        ),
         routes: [
           GoRoute(
             path: '/shop-home',
-            builder: (BuildContext context, GoRouterState state) => const HomeScreen(),
+            builder: (context, state) => HomeScreen(key: ValueKey('shop_home_${shopProvider.currentShop?.id}')),
           ),
           GoRoute(
             path: '/kena-becha',
-            builder: (BuildContext context, GoRouterState state) => const KenaBecaScreen(),
+            builder: (context, state) => KenaBecaScreen(key: ValueKey('kena_becha_${shopProvider.currentShop?.id}')),
           ),
           GoRoute(
             path: '/len-den',
-            builder: (BuildContext context, GoRouterState state) => const LenDenScreen(),
+            builder: (context, state) => LenDenScreen(key: ValueKey('len_den_${shopProvider.currentShop?.id}')),
           ),
           GoRoute(
             path: '/ay-bay',
-            builder: (BuildContext context, GoRouterState state) => const AyBayScreen(),
+            builder: (context, state) => AyBayScreen(key: ValueKey('ay_bay_${shopProvider.currentShop?.id}')),
           ),
         ],
       ),
@@ -326,28 +332,36 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late final GoRouter _router;
+  GoRouter? _router;
+  String? _lastShopId;
 
   @override
   void initState() {
     super.initState();
-    final authProvider = context.read<AuthProvider>();
-    final shopProvider = context.read<ShopProvider>();
-    _router = _createRouter(authProvider, shopProvider);
+    // Router is now initialized in build to handle shop-specific resets
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    final isLoading = context.select<AuthProvider, bool>((p) => p.loading);
     // We do not need to watch shopProvider here anymore since it's just for GoRouter!
 
-    if (authProvider.loading) {
+    if (isLoading) {
       return const MaterialApp(
         home: Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
+    final shopId = context.watch<ShopProvider>().currentShop?.id;
+
+    // Recreate the router instance if the shop changes to ensure a clean state
+    if (_router == null || shopId != _lastShopId) {
+      _router = _createRouter(context.read<AuthProvider>(), context.read<ShopProvider>());
+      _lastShopId = shopId;
+    }
+
     return MaterialApp.router(
+      key: ValueKey('papyrus_app_$shopId'),
       title: 'Papyrus',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

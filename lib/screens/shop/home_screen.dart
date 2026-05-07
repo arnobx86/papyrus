@@ -230,21 +230,15 @@ class _HomeScreenState extends State<HomeScreen> {
       elevation: 0,
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF154834).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(LucideIcons.home, color: const Color(0xFF154834), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Text(shop?.name ?? 'Papyrus', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF154834))),
-        ],
-      ),
+      title: Text(shop?.name ?? 'Papyrus', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF154834))),
       actions: [
+        IconButton(
+          onPressed: () {
+            context.read<ShopProvider>().setCurrentShop(null);
+          },
+          icon: const Icon(LucideIcons.store, color: Color(0xFF154834)),
+          tooltip: 'Switch Shop',
+        ),
         IconButton(
           onPressed: () => context.push('/notifications'),
           icon: const Icon(LucideIcons.bell, color: Colors.grey),

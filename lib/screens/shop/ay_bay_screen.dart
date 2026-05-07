@@ -28,6 +28,7 @@ class _AyBayScreenState extends State<AyBayScreen> {
   List<dynamic> _filteredTransactions = [];
   RealtimeChannel? _transactionsChannel;
   RealtimeChannel? _walletsChannel;
+  DateTime _selectedMonth = DateTime.now();
 
   @override
   void initState() {
@@ -545,7 +546,6 @@ class _AyBayScreenState extends State<AyBayScreen> {
 
       final now = DateTime.now();
       final today = DateFormat('yyyy-MM-dd').format(now);
-      final monthStart = DateFormat('yyyy-MM-01').format(now);
 
       // Fetch transactions based on active tab
       var query = supabase
@@ -556,7 +556,8 @@ class _AyBayScreenState extends State<AyBayScreen> {
       if (_activeTab == 'today') {
         query = query.eq('transaction_date', today);
       } else if (_activeTab == 'monthly') {
-        final lastDay = DateTime(now.year, now.month + 1, 0);
+        final monthStart = DateFormat('yyyy-MM-01').format(_selectedMonth);
+        final lastDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
         final monthEnd = DateFormat('yyyy-MM-dd').format(lastDay);
         query = query.gte('transaction_date', monthStart).lte('transaction_date', monthEnd);
       }
@@ -743,7 +744,9 @@ class _AyBayScreenState extends State<AyBayScreen> {
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
-                                    tab[0].toUpperCase() + tab.substring(1),
+                                    tab == 'monthly' && active
+                                        ? DateFormat('MMMM yyyy').format(_selectedMonth)
+                                        : tab[0].toUpperCase() + tab.substring(1),
                                     style: TextStyle(
                                       color: active ? Colors.white : Colors.grey,
                                       fontWeight: FontWeight.bold,
@@ -756,6 +759,59 @@ class _AyBayScreenState extends State<AyBayScreen> {
                           }).toList(),
                         ),
                       ),
+                      if (_activeTab == 'monthly') ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(LucideIcons.chevronLeft, size: 20),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+                                });
+                                _fetchData();
+                              },
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _selectedMonth,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                  helpText: 'Select Month',
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    _selectedMonth = DateTime(picked.year, picked.month);
+                                  });
+                                  _fetchData();
+                                }
+                              },
+                              child: Text(
+                                DateFormat('MMMM yyyy').format(_selectedMonth),
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(LucideIcons.chevronRight, size: 20),
+                              onPressed: _selectedMonth.month == DateTime.now().month && _selectedMonth.year == DateTime.now().year
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+                                      });
+                                      _fetchData();
+                                    },
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       // Income / Expense (period-filtered)
                       Row(

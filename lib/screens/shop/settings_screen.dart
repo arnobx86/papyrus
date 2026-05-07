@@ -80,6 +80,15 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 _buildItem(
                   context,
+                  icon: LucideIcons.store,
+                  label: 'Switch Shop',
+                  color: const Color(0xFF154834),
+                  onTap: () {
+                    context.read<ShopProvider>().setCurrentShop(null);
+                  },
+                ),
+                _buildItem(
+                  context,
                   icon: LucideIcons.logOut,
                   label: 'Log Out',
                   color: Colors.grey,

@@ -187,11 +187,23 @@ class _ShopSelectScreenState extends State<ShopSelectScreen> {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () async {
-          await context.read<AuthProvider>().fetchAndSetRole(shop.id);
-          if (!mounted) return;
-          await context.read<ShopProvider>().setCurrentShop(shop);
-          if (context.mounted) {
-            context.go('/shop-home');
+          setState(() => _isProcessing = true);
+          try {
+            // Group state updates
+            await context.read<AuthProvider>().fetchAndSetRole(shop.id);
+            if (!mounted) return;
+            await context.read<ShopProvider>().setCurrentShop(shop);
+            
+            // Navigation is now automatically handled by GoRouter's redirect logic 
+            // when ShopProvider.currentShop is set.
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error switching shop: $e'), backgroundColor: Colors.red),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => _isProcessing = false);
           }
         },
         child: Padding(
