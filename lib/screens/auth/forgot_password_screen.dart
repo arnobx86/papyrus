@@ -23,6 +23,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _showPassword = false;
   String? _errorMessage;
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _otpController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleSendOTP() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -35,15 +44,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
-      // Standard Recovery: This sends a Supabase email (User must brand it in Dashboard)
-      await context.read<AuthProvider>().resetPassword(email);
+      final exists = await auth.checkUserExists(email);
+      if (!exists) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _errorMessage = 'There is no account associated with this email.';
+          });
+        }
+        return;
+      }
+
+      await auth.sendCustomOTP(email, isSignup: false);
       if (mounted) {
         setState(() {
           _step = 2; // In standard flow, this leads to the 6-digit OTP (if enabled)
           _loading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Recovery code sent!'), backgroundColor: Colors.green),
         );
       }
@@ -71,14 +93,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
+    final auth = context.read<AuthProvider>();
+
     try {
-      // Standard OTP verification for recovery
-      await context.read<AuthProvider>().verifyOTP(email, otp, type: OtpType.recovery);
-      if (mounted) {
-        setState(() {
-          _step = 3;
-          _loading = false;
-        });
+      final isValid = await auth.verifyCustomOTP(email, otp);
+      if (isValid) {
+        if (mounted) {
+          setState(() {
+            _step = 3;
+            _loading = false;
+          });
+        }
+      } else {
+        throw Exception('Invalid or expired verification code');
       }
     } catch (e) {
       if (mounted) {
@@ -109,10 +136,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
-      await context.read<AuthProvider>().finalizePasswordReset(password);
+      final email = _emailController.text.trim();
+      await auth.resetPasswordWithEdgeFunction(email, password);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Password updated successfully!'), backgroundColor: Colors.green),
         );
         context.go('/login');

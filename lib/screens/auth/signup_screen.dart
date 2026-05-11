@@ -31,6 +31,17 @@ class _SignupScreenState extends State<SignupScreen> {
     });
     
     try {
+      final exists = await context.read<AuthProvider>().checkUserExists(email);
+      if (exists) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _errorMessage = 'There is already an account with this email.';
+          });
+        }
+        return;
+      }
+
       await context.read<AuthProvider>().sendCustomOTP(email);
       if (mounted) {
         setState(() {

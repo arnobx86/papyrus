@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-05-11
+
+### Added
+- **Email Validation**: Added account existence checks before sending OTPs for both Signup and Forgot Password flows.
+- **Custom OTP Recovery**: Switched Forgot Password flow from link-based recovery to 6-digit OTP verification for better mobile consistency.
+
+### Fixed
+- **Auth Stability**: Resolved "Looking up a deactivated widget's ancestor" error during the password reset process.
+- **Memory Management**: Fixed potential memory leaks in Auth screens by properly disposing text controllers.
+
 ## [1.2.0] - 2026-05-07
 
 ### Added

@@ -1,3 +1,21 @@
+# Release Notes - v1.2.1
+
+## 🔐 Enhanced Authentication & Validation
+
+### ✅ Smart Email Validation
+- **Signup Check**: The app now automatically checks if an email is already in use before sending a verification code, preventing duplicate accounts and providing clearer feedback.
+- **Account Discovery**: During password recovery, the system verifies that an account exists for the provided email before proceeding, ensuring reset codes are only sent to registered users.
+
+### 🔑 Advanced Password Recovery
+- **Native OTP Flow**: Transitioned from email links to a 6-digit OTP verification system for password resets, providing a seamless in-app experience.
+- **Secure Architecture**: Integrated a new Edge Function to handle password updates securely via server-side logic.
+
+## 🛠️ Stability Fixes
+- **Context Management**: Resolved the "Looking up a deactivated widget's ancestor" error that could occur during complex auth transitions.
+- **Resource Optimization**: Implemented proper controller disposal in all authentication screens to ensure better app performance and memory efficiency.
+
+---
+
 # Release Notes - v1.2.0
 
 ## 🚀 Stability & Navigation Overhaul

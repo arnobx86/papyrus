@@ -146,6 +146,14 @@ class AuthProvider extends ChangeNotifier {
     return response as bool;
   }
 
+  Future<bool> checkUserExists(String email) async {
+    final response = await _supabase.rpc(
+      'rpc_check_user_exists',
+      params: {'p_email': email},
+    );
+    return response as bool;
+  }
+
   Future<AuthResponse> finalizeSignup(String email, String password) async {
     // Since we've already verified the OTP via our custom flow,
     // we use the standard signUp method. 
@@ -176,7 +184,20 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> resetPassword(String email) async {
-    await _supabase.auth.resetPasswordForEmail(email);
+    // Use custom OTP flow instead of standard Supabase link-based recovery
+    await sendCustomOTP(email, isSignup: false);
+  }
+
+  Future<void> resetPasswordWithEdgeFunction(String email, String newPassword) async {
+    final response = await _supabase.functions.invoke(
+      'reset-password',
+      body: {'email': email, 'password': newPassword},
+    );
+
+    if (response.status != 200) {
+      final error = response.data['error'] ?? 'Failed to reset password';
+      throw Exception(error);
+    }
   }
 
   Future<AuthResponse> verifyOTP(String email, String token, {required OtpType type}) async {
