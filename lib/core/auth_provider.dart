@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'app_config.dart';
 
 class AuthProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -188,15 +191,25 @@ class AuthProvider extends ChangeNotifier {
     await sendCustomOTP(email, isSignup: false);
   }
 
-  Future<void> resetPasswordWithEdgeFunction(String email, String newPassword) async {
-    final response = await _supabase.functions.invoke(
-      'reset-password',
-      body: {'email': email, 'password': newPassword},
-    );
+  Future<void> resetPasswordWithEdgeFunction(String email, String newPassword, String otp) async {
+    try {
+      final response = await _supabase.rpc(
+        'rpc_reset_password_secure',
+        params: {
+          'p_email': email,
+          'p_otp': otp,
+          'p_new_password': newPassword,
+        },
+      );
 
-    if (response.status != 200) {
-      final error = response.data['error'] ?? 'Failed to reset password';
-      throw Exception(error);
+      final result = Map<String, dynamic>.from(response as Map);
+      
+      if (result['success'] == false) {
+        throw Exception(result['error'] ?? 'Failed to reset password');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('An unexpected error occurred: $e');
     }
   }
 

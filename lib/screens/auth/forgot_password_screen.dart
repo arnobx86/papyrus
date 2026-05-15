@@ -141,7 +141,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       final email = _emailController.text.trim();
-      await auth.resetPasswordWithEdgeFunction(email, password);
+      final otp = _otpController.text.trim();
+      await auth.resetPasswordWithEdgeFunction(email, password, otp);
       if (mounted) {
         messenger.showSnackBar(
           const SnackBar(content: Text('Password updated successfully!'), backgroundColor: Colors.green),

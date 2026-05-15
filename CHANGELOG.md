@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-05-15
+
+### Added
+- **Enhanced Product Visibility**: Product names now support up to two lines of text with refined line spacing for better readability.
+- **Modern Badge Styling**: Redesigned the "LOW" stock badge to be flush with the card corner with matched radius for a premium look.
+
+### Fixed
+- **Auth Recovery**: Resolved critical "401 Unauthorized" and "Invalid JWT" errors during the password reset process by implementing a secure database RPC.
+- **Backend Security**: Upgraded the password reset flow to use native bcrypt hashing and secure OTP verification in the database layer.
+
 ## [1.2.1] - 2026-05-11
 
 ### Added

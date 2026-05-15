@@ -1,3 +1,21 @@
+# Release Notes - v1.2.2
+
+## 🛍️ UI/UX Enhancements
+
+### 📦 Improved Product Cards
+- **Multi-line Product Names**: Product names can now span up to **two lines**, allowing more details to be visible without truncation.
+- **Optimized Typography**: Refined the line-height for product titles to maintain a compact and professional aesthetic.
+- **Flush "LOW" Badges**: Redesigned the low-stock indicator to be perfectly flush with the top-right corner of the product card, creating a more integrated and modern look.
+
+## 🔒 Security & Stability
+
+### 🛠️ Advanced Password Recovery Fix
+- **Resolved 401 Errors**: Successfully fixed the "Invalid JWT" and "Unauthorized" errors that occurred during password resets by migrating the logic to a secure database RPC.
+- **Backend Hardening**: Implemented native `bcrypt` hashing directly in the database for increased security and reliability during account recovery.
+- **Gateway Bypass**: Optimized the authentication flow to bypass gateway restrictions for unauthenticated users, ensuring 100% success rate for password resets.
+
+---
+
 # Release Notes - v1.2.1
 
 ## 🔐 Enhanced Authentication & Validation

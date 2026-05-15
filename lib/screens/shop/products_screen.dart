@@ -384,60 +384,66 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(color: isLow ? Colors.red.withOpacity(0.3) : Theme.of(context).dividerColor),
                               ),
-                              child: ListTile(
-                                onLongPress: () => _showContextMenu(context, p),
-                                leading: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: (isLow ? Colors.red : Theme.of(context).colorScheme.primary).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: p['image_url'] != null
-                                    ? ClipRRect(
+                              child: Stack(
+                                children: [
+                                  ListTile(
+                                    onLongPress: () => _showContextMenu(context, p),
+                                    leading: Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: (isLow ? Colors.red : Theme.of(context).colorScheme.primary).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          p['image_url'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Icon(LucideIcons.box, color: isLow ? Colors.red : Theme.of(context).colorScheme.primary, size: 20),
-                                        ),
-                                      )
-                                    : Icon(LucideIcons.box, color: isLow ? Colors.red : Theme.of(context).colorScheme.primary, size: 20),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        p['name'], 
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                      child: p['image_url'] != null
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              p['image_url'],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Icon(LucideIcons.box, color: isLow ? Colors.red : Theme.of(context).colorScheme.primary, size: 20),
+                                            ),
+                                          )
+                                        : Icon(LucideIcons.box, color: isLow ? Colors.red : Theme.of(context).colorScheme.primary, size: 20),
                                     ),
-                                    if (isLow) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
+                                    title: Text(
+                                      p['name'], 
+                                      style: const TextStyle(fontWeight: FontWeight.bold, height: 1.2),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(
+                                      'SKU: ${p['sku'] ?? '-'} • Stock: $stock ${p['unit'] ?? 'pcs'}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 12, color: isLow ? Colors.red : Colors.grey),
+                                    ),
+                                    trailing: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text('৳${(p['purchase_price'] ?? p['cost_price']) ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        const Text('Purchase Price', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isLow)
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(12),
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                        ),
                                         child: const Text('LOW', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
                                       ),
-                                    ]
-                                  ],
-                                ),
-                                subtitle: Text(
-                                  'SKU: ${p['sku'] ?? '-'} • Stock: $stock ${p['unit'] ?? 'pcs'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 12, color: isLow ? Colors.red : Colors.grey),
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text('৳${(p['purchase_price'] ?? p['cost_price']) ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    const Text('Purchase Price', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                  ],
-                                ),
+                                    ),
+                                ],
                               ),
                             );
                           },
